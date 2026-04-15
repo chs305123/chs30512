@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medi&Fit 시각적 통증 척도 (VAS)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #7c4e38;      /* Medi&Fit 브라운 */
+            --primary-light: #f6e8e0;
+            --secondary: #a37f6e;    /* 보조 브라운 */
+            --bg: #f8f1e6;
+            --card: #ffffff;
+            --text-main: #4a332a;
+            --text-light: #8e7568;
+            --border: #e2d1c6;
+            --danger: #d32f2f;      /* 8점 이상 경고색 */
+        }
+
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .wrapper { width: 100%; max-width: 650px; margin: 0 auto; }
+        .container {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(124, 78, 56, 0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 20px;
+        }
+
+        .title-medi {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .title-sub { font-size: 1.1rem; color: var(--text-main); font-weight: 600; margin-top: 5px;}
+        
+        .q-card {
+            background: #faf7f2;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .q-header {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        /* --- VAS 전용 이모지 그리드 (레퍼런스 디자인 구현) --- */
+        .vas-container {
+            width: 100%;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .emoji-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .emoji-item {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .emoji-item input { display: none; }
+        
+        /* 이모지 기본 스타일 */
+        .emoji-item .emoji {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 5px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        /* 선택 시 이모지 확대 */
+        .emoji-item input:checked + .emoji {
+            transform: scale(1.15);
+            opacity: 1;
+        }
+
+        /* 눈금 스타일 디자인 */
+        .scale-grid {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            padding: 0 10px;
+            margin-bottom: 10px;
+        }
+
+        /* 눈금 선 */
+        .scale-grid::before {
+            content: "";
+            position: absolute;
+            top: 50%; left: 0; right: 0;
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+
+        /* 점수 숫자 */
+        .scale-item {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 700;
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 체크박스 점 */
+        .scale-item input { display: none; }
+        .scale-item label {
+            width: 12px;
+            height: 12px;
+            background: #e2d1c6;
+            border-radius: 50%;
+            display: block;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        /* 선택 시 점 색상 변경 */
+        .scale-item input:checked + label {
+            background: var(--primary);
+        }
+
+        .vas-item.high-pain label {
+            background: var(--danger) !important;
+        }
+
+        /* 하단 텍스트 레이블 (중요 지점만 표시) */
+        .vas-labels {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 500;
+            text-align: center;
+            padding-top: 5px;
+        }
+
+        .btn {
+            width: 100%; padding: 18px; border: none; border-radius: 12px;
+            font-size: 1.1rem; font-weight: bold; cursor: pointer;
+        }
+        .btn-submit { background: var(--primary); color: white; margin-top: 20px; }
+
+        /* 결과 화면 동일 */
+        #result-screen { display: none; text-align: center; }
+        .chart-box { position: relative; width: 220px; height: 220px; margin: 0 auto 30px; }
+        .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; font-weight: 800; }
+        .ans-list { text-align: left; background: #faf7f2; padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .highlight-row { background: var(--primary); color: white; font-weight: bold; }
+        .highlight-danger { background: var(--danger); color: white; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid var(--border); }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; }
+        th { background: var(--primary-light); color: var(--primary); }
+        .btn-pdf { background: #5d4037; color: white; margin-top: 20px; }
+        .btn-reset { background: var(--secondary); color: white; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="container" id="main-content">
+        <div id="survey-screen">
+            <header>
+                <div class="title-medi"><span style="color: var(--secondary);">Medi</span>&<span>Fit</span></div>
+                <div class="title-sub">시각적 통증 척도 (VAS)</div>
+            </header>
+            
+            <div style="text-align:center; margin-bottom: 10px; font-weight: 700; color: var(--primary);">
+                현재 느끼는 통증은 어느 정도입니까?
+            </div>
+
+            <form id="vas-form">
+                <div class="vas-container">
+                    <div class="emoji-row" id="emoji-container"></div>
+                    <div class="scale-grid" id="scale-container"></div>
+                    <div class="vas-labels">
+                        <span>통증 없음</span>
+                        <span>경미함</span>
+                        <span>불편함</span>
+                        <span>심함</span>
+                        <span>매우 심함</span>
+                        <span>극심함</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-submit" onclick="showResult()">분석 결과 보기</button>
+            </form>
+        </div>
+
+        <div id="result-screen">
+            <header>
+                <div class="title-medi"><span style="color: var(--secondary);">Medi</span>&<span>Fit</span></div>
+                <div class="title-sub">통증 분석 보고서</div>
+            </header>
+            <div class="chart-box">
+                <canvas id="scoreChart"></canvas>
+                <div class="score-text" id="score-val">0</div>
+            </div>
+            <div class="ans-list">
+                <h3 style="margin-top:0; color:var(--primary);">평가 결과</h3>
+                <p id="pain-desc" style="font-weight: 600;"></p>
+            </div>
+            <table>
+                <thead><tr><th>점수</th><th>통증 단계</th></tr></thead>
+                <tbody>
+                    <tr id="lv1"><td>0 - 2</td><td>경미함 (Mild)</td></tr>
+                    <tr id="lv2"><td>3 - 7</td><td>보통 (Moderate)</td></tr>
+                    <tr id="lv3"><td>8 - 10</td><td>심함 (Severe)</td></tr>
+                </tbody>
+            </table>
+            <button class="btn btn-pdf" onclick="saveAsPDF()">PDF 보고서 저장</button>
+            <button class="btn btn-reset" onclick="location.reload()">다시 측정하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const emojiContainer = document.getElementById('emoji-container');
+    const scaleContainer = document.getElementById('scale-container');
+
+    const labels = ["통증 없음", "매우 약함", "약함", "참을만함", "불편함", "뚜렷한 통증", "심한 활동 방해", "강한 통증", "매우 심함", "극심함", "참을 수 없는 고통"];
+    const emojis = ["😊", "😐", "😟", "☹️", "😖", "😫"]; // 레퍼런스 이미지 기반 이모지 순서
+
+    // 0~10점 눈금 바 생성
+    for (let i = 0; i <= 10; i++) {
+        const isHigh = i >= 8 ? 'high-pain' : '';
+        scaleContainer.innerHTML += `
+            <div class="scale-item">
+                <input type="radio" name="vas" id="s${i}" value="${i}" data-label="${labels[i]}" required>
+                <label for="s${i}"></label>
+                <span>${i}</span>
+            </div>
+        `;
+    }
+
+    // 이모지 클릭 기능 구현 (눈금 라디오 버튼과 연동)
+    for (let j = 0; j < 6; j++) {
+        const score = j * 2; // 각 이모지가 0, 2, 4, 6, 8, 10점을 가리키게 설정
+        emojiContainer.innerHTML += `
+            <div class="emoji-item">
+                <input type="radio" name="vas-emoji" id="e${j}" onclick="syncWithScale(${score})">
+                <span class="emoji" for="e${j}">${emojis[j]}</span>
+            </div>
+        `;
+    }
+
+    // 이모지 클릭 시 하단 눈금 라디오 버튼을 자동으로 선택하게 하는 함수
+    function syncWithScale(score) {
+        document.getElementById(`s${score}`).checked = true;
+    }
+
+    let chartInstance = null;
+
+    function showResult() {
+        // 눈금 라디오 버튼 중 선택된 항목 확인
+        const selected = document.querySelector('input[name="vas"]:checked');
+        if (!selected) { alert("통증 점수를 선택해 주세요."); return; }
+
+        const score = parseInt(selected.value);
+        const label = selected.getAttribute('data-label');
+        
+        document.getElementById('survey-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        
+        const scoreValEl = document.getElementById('score-val');
+        scoreValEl.innerText = score;
+        document.getElementById('pain-desc').innerText = `현재 통증 수준은 ${score}점(${label}) 상태입니다.`;
+
+        let mainColor = '#7c4e38';
+        document.querySelectorAll('tr').forEach(r => r.className = '');
+        
+        if (score >= 8) {
+            mainColor = '#d32f2f';
+            scoreValEl.style.color = mainColor;
+            document.getElementById('lv3').className = 'highlight-danger';
+        } else if (score >= 3) {
+            document.getElementById('lv2').className = 'highlight-row';
+            scoreValEl.style.color = '#7c4e38';
+        } else {
+            document.getElementById('lv1').className = 'highlight-row';
+            scoreValEl.style.color = '#7c4e38';
+        }
+
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [score, 10 - (score === 0 ? 0.1 : score)],
+                    backgroundColor: [mainColor, '#e2d1c6'],
+                    borderWidth: 0
+                }]
+            },
+            options: { cutout: '85%', plugins: { tooltip: { enabled: false } } }
+        });
+    }
+
+    async function saveAsPDF() {
+        const { jsPDF } = window.jspdf;
+        const canvas = await html2canvas(document.getElementById('main-content'), { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = pdf.internal.pageSize.getWidth() - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+        pdf.save('MediFit_VAS_Report.pdf');
+    }
+</script>
+</body>
+</html>
