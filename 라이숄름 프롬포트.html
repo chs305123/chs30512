@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medi&Fit 라이숄름 무릎 점수 (Lysholm Scale)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* --- Medi&Fit 브랜딩 테마 --- */
+        :root {
+            --primary: #7c4e38;      /* 로고의 초콜릿 브라운 */
+            --primary-light: #f6e8e0; /* 연한 브라운 (하이라이트용) */
+            --secondary: #a37f6e;    /* 보조 브라운 */
+            --bg: #f8f1e6;           /* 따뜻한 베이지 배경 (종이 질감 느낌) */
+            --card: #ffffff;        /* 흰색 카드 */
+            --text-main: #4a332a;    /* 짙은 브라운 텍스트 */
+            --text-light: #8e7568;  /* 연한 브라운 텍스트 */
+            --border: #e2d1c6;      /* 경계선 브라운 */
+        }
+
+        /* Pretendard 폰트 (신뢰감) */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        .container {
+            background: var(--card);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(124, 78, 56, 0.1); /* 갈색 쉐도우 */
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 20px;
+        }
+
+        /* Medi&Fit 스타일 타이틀 */
+        .title-medi {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .title-sub { font-size: 1rem; color: var(--text-main); font-weight: 500;}
+        .desc { font-size: 0.95rem; color: var(--text-light); }
+
+        .q-card {
+            background: #faf7f2; /* 매우 연한 베이지 */
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .q-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .icon { font-size: 1.4rem; color: var(--secondary); }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .option-item input { display: none; }
+        .option-item label {
+            display: block;
+            background: white;
+            border: 1px solid var(--border);
+            padding: 14px 10px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease-in-out;
+            color: var(--text-main);
+        }
+
+        /* 선택 시 갈색 테마 */
+        .option-item input:checked + label {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            font-weight: bold;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .btn-submit { background: var(--primary); color: white; }
+        .btn-submit:hover { opacity: 0.9; }
+
+        #result-screen { display: none; text-align: center; }
+
+        .chart-box {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 30px;
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* 결과 테이블 디자인 수정 */
+        .ans-list {
+            text-align: left;
+            margin-bottom: 30px;
+            background: #faf7f2;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .ans-list h3 { margin-top: 0; color: var(--primary); }
+        .ans-list ul { list-style: none; padding: 0; margin: 0; }
+        .ans-list li {
+            font-size: 0.9rem;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-main);
+        }
+        .ans-list li:last-child { border-bottom: none; }
+        .ans-list li span.q-t { font-weight: 600; }
+        .ans-list li span.ans-t { color: var(--text-light); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        th { background: var(--primary-light); color: var(--primary); font-weight: 700;}
+
+        /* 결과 강조 행 디자인 변경 */
+        .highlight-row {
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+        .highlight-row td { color: white; }
+
+        .btn-pdf { background: #5d4037; color: white; margin-top: 20px; } /* 더 짙은 갈색 */
+        .btn-pdf:hover { opacity: 0.9; }
+        .btn-reset { background: var(--secondary); color: white; margin-top: 10px; }
+        .btn-reset:hover { opacity: 0.9; }
+
+        @media (max-width: 480px) {
+            .options { grid-template-columns: 1fr; }
+            .option-item label { text-align: left; padding-left: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="container" id="main-content">
+        <div id="survey-screen">
+            <header>
+                <div class="title-medi">
+                    <span style="color: var(--secondary);">Medi</span><span>&</span><span style="color: var(--secondary);">Fit</span>
+                </div>
+                <div class="title-sub">라이숄름 무릎 점수 (Lysholm)</div>
+                <p class="desc">스포츠의학 기반 맞춤 분석. 본인의 상태를 가장 잘 나타내는 항목을 선택하세요.</p>
+            </header>
+
+            <form id="lysholm-form">
+                <div id="questions-list"></div>
+                <button type="button" class="btn btn-submit" onclick="showResult()">결과 분석하기</button>
+            </form>
+        </div>
+
+        <div id="result-screen">
+            <header>
+                <div class="title-medi">
+                    <span style="color: var(--secondary);">Medi</span><span>&</span><span style="color: var(--secondary);">Fit</span>
+                </div>
+                <div class="title-sub">무릎 기능 분석 보고서</div>
+            </header>
+
+            <div class="chart-box">
+                <canvas id="scoreChart"></canvas>
+                <div class="score-text" id="score-val">0</div>
+            </div>
+
+            <div class="ans-list">
+                <h3>선택한 답변 내역</h3>
+                <ul id="answer-details"></ul>
+            </div>
+
+            <h3>점수 해석 가이드</h3>
+            <table>
+                <thead>
+                    <tr><th>점수 범위</th><th>해석</th></tr>
+                </thead>
+                <tbody id="interpretation-table">
+                    <tr id="rank-excellent"><td>95 - 100</td><td>최우수 (Excellent)</td></tr>
+                    <tr id="rank-good"><td>84 - 94</td><td>우수 (Good)</td></tr>
+                    <tr id="rank-fair"><td>65 - 83</td><td>보통 (Fair)</td></tr>
+                    <tr id="rank-poor"><td>65 미만</td><td>불량 (Poor)</td></tr>
+                </tbody>
+            </table>
+
+            <button class="btn btn-pdf" onclick="saveAsPDF()">PDF 보고서 저장</button>
+            <button class="btn btn-reset" onclick="location.reload()">다시 분석하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 질문 데이터 및 배점 (가중치 정확히 반영)
+    const questions = [
+        { q: "불안정성 (Instability)", icon: "⚖️", opts: [["불안정함 없음", 25], ["가끔 어긋나는 느낌(격한활동)", 20], ["가끔 어긋나는 느낌(일상생활)", 15], ["자주 어긋나는 느낌(일상생활)", 10], ["매 걸음마다 어긋남", 5], ["보행 불가능", 0]] },
+        { q: "통증 (Pain)", icon: "⚡", opts: [["통증 없음", 25], ["심한 활동 후 간헐적 약한 통증", 20], ["심한 활동 중 통증", 15], ["2km 이상 보행 시 통증", 10], ["2km 미만 보행 시 통증", 5], ["항상 심한 통증", 0]] },
+        { q: "무릎 잠김 (Locking)", icon: "🔒", opts: [["잠김/걸림 없음", 15], ["걸리는 느낌(Catching) 있음", 10], ["가끔 잠김 발생", 6], ["자주 잠김 발생", 2], ["현재 잠겨 있음", 0]] },
+        { q: "부종 (Swelling)", icon: "🎈", opts: [["없음", 10], ["심한 활동 후 발생", 6], ["일상 활동 후 발생", 2], ["항상 부어 있음", 0]] },
+        { q: "계단 오르기 (Stairs)", icon: "📶", opts: [["문제 없음", 10], ["약간의 불편함", 6], ["한 계단씩 천천히", 2], ["불가능", 0]] },
+        { q: "쪼그려 앉기 (Squatting)", icon: "🧘", opts: [["문제 없음", 5], ["약간의 불편함", 4], ["90도 이상 어려움", 2], ["불가능", 0]] },
+        { q: "절뚝거림 (Limping)", icon: "🚶", opts: [["없음", 5], ["가끔 혹은 가볍게", 3], ["항상 나타나며 심함", 0]] },
+        { q: "보조기 사용 (Support)", icon: "🦯", opts: [["필요 없음", 5], ["지팡이/목발 가끔 필요", 2], ["보조기 필수", 0]] }
+    ];
+
+    const qContainer = document.getElementById('questions-list');
+    
+    questions.forEach((item, idx) => {
+        let qHtml = `
+            <div class="q-card">
+                <div class="q-header">
+                    <span class="icon">${item.icon}</span>
+                    <span>${idx + 1}. ${item.q}</span>
+                </div>
+                <div class="options">
+        `;
+        item.opts.forEach((opt, oIdx) => {
+            qHtml += `
+                <div class="option-item">
+                    <input type="radio" name="q${idx}" id="q${idx}_${oIdx}" value="${opt[1]}" data-text="${opt[0]}" required>
+                    <label for="q${idx}_${oIdx}">${opt[0]} (${opt[1]}점)</label>
+                </div>
+            `;
+        });
+        qHtml += `</div></div>`;
+        qContainer.innerHTML += qHtml;
+    });
+
+    let chartInstance = null;
+
+    function showResult() {
+        const form = document.getElementById('lysholm-form');
+        const ansList = document.getElementById('answer-details');
+        ansList.innerHTML = ""; // 초기화
+        let sum = 0;
+        let answeredCount = 0;
+
+        questions.forEach((item, idx) => {
+            const selected = form.querySelector(`input[name="q${idx}"]:checked`);
+            if(selected) {
+                const score = parseInt(selected.value);
+                const text = selected.getAttribute('data-text');
+                sum += score;
+                answeredCount++;
+                ansList.innerHTML += `<li><span class="q-t">${idx+1}. ${item.q}</span><span class="ans-t">${text} (${score}점)</span></li>`;
+            }
+        });
+
+        if (answeredCount < 8) {
+            alert("모든 문항에 답변해 주세요.");
+            return;
+        }
+
+        const finalScore = sum; // 총점 100점 만점
+        
+        document.getElementById('survey-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('score-val').innerText = finalScore;
+
+        // 등급 강조 (테마 갈색으로 변경)
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('highlight-row'));
+        if (finalScore >= 95) document.getElementById('rank-excellent').classList.add('highlight-row');
+        else if (finalScore >= 84) document.getElementById('rank-good').classList.add('highlight-row');
+        else if (finalScore >= 65) document.getElementById('rank-fair').classList.add('highlight-row');
+        else document.getElementById('rank-poor').classList.add('highlight-row');
+
+        // 차트 생성 (갈색 테마로 변경)
+        const ctx = document.getElementById('scoreChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [finalScore, 100 - finalScore],
+                    backgroundColor: ['#7c4e38', '#e2d1c6'], // 주황 갈색, 연한 갈색
+                    borderWidth: 0,
+                    circumference: 360,
+                    rotation: 0
+                }]
+            },
+            options: {
+                cutout: '85%',
+                plugins: { tooltip: { enabled: false } }
+            }
+        });
+    }
+
+    async function saveAsPDF() {
+        const { jsPDF } = window.jspdf;
+        const target = document.getElementById('main-content');
+        
+        const canvas = await html2canvas(target, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+        
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const imgWidth = pdfWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+        pdf.save('MediFit_Lysholm_Report.pdf');
+    }
+</script>
+
+</body>
+</html>
