@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medi&Fit 종합 기능 평가 시스템</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #523021;      
+            --primary-light: #f4ece8;
+            --secondary: #705548;
+            --bg: #f8f1e6;
+            --card: #ffffff;
+            --text-main: #1a1a1a;    
+            --text-light: #444444;   
+            --border: #c4b0a3;
+            --danger: #b71c1c;
+            --muted: #cccccc;
+        }
+
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0; padding: 20px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrapper { width: 100%; max-width: 650px; margin: 0 auto; }
+        .container {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 2.2rem; font-weight: 900; color: var(--primary); letter-spacing: -1px; margin-bottom: 10px; }
+        .logo span { color: var(--secondary); }
+        
+        .step-indicator { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 25px; }
+        
+        .nav-steps { display: flex; justify-content: space-between; margin-bottom: 40px; position: relative; }
+        .nav-steps::before { content: ""; position: absolute; top: 12px; left: 0; right: 0; height: 1px; background: #eee; z-index: 1; }
+        .nav-item { position: relative; z-index: 2; background: var(--card); padding: 0 5px; font-size: 0.75rem; font-weight: 700; color: var(--muted); text-align: center; width: 25%; }
+        .nav-item.active { color: var(--primary); font-weight: 900; }
+        .nav-item.active .dot { background: var(--primary); border-color: var(--primary); }
+        .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #eee; background: #fff; margin: 0 auto 8px; }
+
+        .info-box { background: #fdfaf8; border: 1px solid var(--border); border-radius: 16px; padding: 25px; margin-bottom: 25px; font-size: 0.9rem; color: var(--text-light); }
+        .info-box strong { color: var(--primary); display: block; margin-bottom: 5px; font-size: 1rem; }
+
+        .vas-container { background: #faf7f2; padding: 30px; border-radius: 16px; border: 1.5px solid var(--border); text-align: center; margin-bottom: 20px; }
+        .emoji-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 25px; }
+        .emoji-item { cursor: pointer; filter: grayscale(100%); transition: 0.3s; opacity: 0.5; }
+        .emoji-item.selected { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
+        .emoji-item span { font-size: 2.5rem; }
+        .scale-numbers { display: flex; justify-content: space-between; padding: 0 5px; margin-bottom: 10px; color: var(--text-light); font-size: 0.85rem; font-weight: 800; }
+        .scale-numbers span { width: 20px; text-align: center; cursor: pointer; }
+        .scale-track { position: relative; height: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; padding: 0 5px; }
+        .scale-track::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 3px; background: #ddd; transform: translateY(-50%); z-index: 1; }
+        .scale-point { position: relative; z-index: 2; display: flex; justify-content: center; width: 20px; height: 20px; }
+        .scale-point input { display: none; }
+        .scale-point label { width: 18px; height: 18px; background: #fff; border: 2.5px solid #bbb; border-radius: 50%; cursor: pointer; display: block; }
+        .scale-point input:checked + label { background: var(--primary); border-color: var(--primary); }
+
+        .q-card { background: #faf7f2; border-radius: 16px; padding: 25px; margin-bottom: 20px; border: 1.5px solid var(--border); }
+        .q-title { font-weight: 800; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+        .options-list { display: flex; flex-direction: column; gap: 8px; }
+        .option-item label { display: block; background: #fff; border: 1.5px solid var(--border); padding: 12px; border-radius: 10px; text-align: left; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+        .option-item input:checked + label { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .option-item input { display: none; }
+
+        .fabq-options { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+        .fabq-opt label { width: 100%; padding: 8px 0; border: 1.5px solid var(--border); background: #fff; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; display: block; }
+        .fabq-opt input:checked + label { background: var(--primary); color: #fff; }
+        .fabq-opt input { display: none; }
+        .fabq-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-light); margin-top: 5px; font-weight: 700; }
+
+        .pdf-page { background: #ffffff !important; padding: 8mm 8mm; box-sizing: border-box; }
+        .result-header { border-bottom: 3px solid var(--primary); padding-bottom: 12px; margin-bottom: 20px; }
+        .score-dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .chart-box { position: relative; width: 130px; height: 130px; margin: 0 auto; }
+        canvas { width: 130px !important; height: 130px !important; }
+        .score-display { position: absolute; top: 53%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 100%; }
+        .score-display .num { font-size: 1.1rem; font-weight: 900; color: var(--primary); display: block; }
+        .score-display .label { font-size: 0.55rem; font-weight: 800; color: var(--text-light); text-transform: uppercase; }
+
+        .opinion-area { background: #fdfaf8; padding: 15px; border-radius: 12px; border: 1.5px solid var(--primary-light); border-left: 6px solid var(--primary); margin-bottom: 15px; }
+        .opinion-area h3 { margin: 0 0 6px 0; color: var(--primary); font-size: 0.95rem; font-weight: 900; }
+        .opinion-area p { margin: 0; font-size: 0.82rem; font-weight: 600; line-height: 1.5; color: #333; }
+
+        .norm-title { font-size: 0.9rem; font-weight: 900; color: var(--primary); margin-bottom: 8px; display: block; border-left: 5px solid var(--primary); padding-left: 10px; }
+        
+        .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+        .detail-table th, .detail-table td { padding: 6px 4px; border: 1px solid #ddd; text-align: center; font-size: 0.65rem; line-height: 1.2; }
+        .detail-table th { background: #f1f1f1; color: var(--primary); font-weight: 900; }
+        .text-left { text-align: left !important; padding-left: 8px !important; }
+        .section-row { background: var(--primary-light) !important; font-weight: 900 !important; color: var(--primary) !important; text-align: left !important; }
+        .sub-section-row { background: #fafafa !important; font-weight: 800 !important; color: var(--secondary) !important; text-align: left !important; }
+        .total-row { background: #fdfaf8 !important; font-weight: 900 !important; color: var(--danger) !important; }
+
+        #pdf-p3 .detail-table td { font-size: 0.62rem; padding: 4px 2px; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { width: 100%; padding: 18px; border: none; border-radius: 14px; font-size: 1rem; font-weight: 800; cursor: pointer; }
+        .btn-primary { background: var(--primary); color: white; flex: 2; }
+        .btn-prev { background: #e0e0e0; color: #666; flex: 1; }
+        .btn-pdf { background: #000; color: white; margin-top: 15px; }
+        .btn-outline { background: #705548; color: white; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="container" id="main-container">
+        <header id="main-header">
+            <div class="logo">Medi<span>&</span>Fit</div>
+            <div class="step-indicator" id="step-title">STEP 01. 허리 통증 수준 평가</div>
+            <div class="nav-steps">
+                <div class="nav-item active" id="nav1"><div class="dot"></div>01.통증</div>
+                <div class="nav-item" id="nav2"><div class="dot"></div>02.요통장애</div>
+                <div class="nav-item" id="nav3"><div class="dot"></div>03.두려움회피</div>
+                <div class="nav-item" id="nav4"><div class="dot"></div>04.결과</div>
+            </div>
+        </header>
+
+        <div id="page1" class="page active">
+            <div class="vas-container">
+                <p style="font-weight: 800; margin-bottom: 25px;">현재 느끼는 가장 주된 허리 통증은 어느 정도입니까?</p>
+                <div class="emoji-row" id="emoji-wrap">
+                    <div class="emoji-item" onclick="setVas(0)"><span>😊</span></div>
+                    <div class="emoji-item" onclick="setVas(2)"><span>😐</span></div>
+                    <div class="emoji-item" onclick="setVas(4)"><span>😟</span></div>
+                    <div class="emoji-item" onclick="setVas(6)"><span>😫</span></div>
+                    <div class="emoji-item" onclick="setVas(8)"><span>😖</span></div>
+                    <div class="emoji-item" onclick="setVas(10)"><span>😭</span></div>
+                </div>
+                <div class="scale-numbers" id="vas-numbers"></div>
+                <div class="scale-track" id="vas-track"></div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="navTo(2)">다음 단계: 요통 장애 지수(ODI) 진행 →</button>
+            </div>
+        </div>
+
+        <div id="page2" class="page">
+            <div class="info-box">
+                <strong>💡 요통 장애 지수 (Oswestry Disability Index)</strong>
+                <span class="info-desc">허리 통증이 일상생활을 얼마나 방해하고 있는지 확인하는 표준 검사입니다. 각 항목에서 현재 상태를 가장 잘 나타내는 하나를 선택해주세요.</span>
+            </div>
+            <div id="odi-container"></div>
+            <div class="btn-group">
+                <button class="btn btn-prev" onclick="navTo(1)">← 이전 단계</button>
+                <button class="btn btn-primary" onclick="navTo(3)">다음 단계: 두려움-회피 신념(FABQ) 진행 →</button>
+            </div>
+        </div>
+
+        <div id="page3" class="page">
+            <div class="info-box">
+                <strong>💡 두려움-회피 신념 설문 (FABQ)</strong>
+                <span class="info-desc">통증에 대한 심리적 두려움이 신체 활동이나 직업 활동을 얼마나 제한하고 있는지 평가합니다. 0~6점 사이로 체크해주세요.</span>
+            </div>
+            <div id="fabq-container"></div>
+            <div class="btn-group">
+                <button class="btn btn-prev" onclick="navTo(2)">← 이전 단계</button>
+                <button class="btn btn-primary" onclick="navTo(4)">최종 분석 리포트 생성</button>
+            </div>
+        </div>
+
+        <div id="page4" class="page">
+            <div id="pdf-p1" class="pdf-page">
+                <div class="result-header">
+                    <div style="display:flex; justify-content: space-between; align-items: flex-end;">
+                        <span style="font-weight: 900; font-size: 1.3rem;">Medi&Fit 종합 분석 리포트</span>
+                        <span id="report-date" style="font-size: 0.85rem; font-weight: 700;"></span>
+                    </div>
+                </div>
+                <div class="score-dash">
+                    <div class="chart-box"><canvas id="chartVas"></canvas><div class="score-display"><span class="label">Pain</span><span class="num" id="res-vas-num">0</span></div></div>
+                    <div class="chart-box"><canvas id="chartOdi"></canvas><div class="score-display"><span class="label">Disability</span><span class="num" id="res-odi-num">0%</span></div></div>
+                    <div class="chart-box"><canvas id="chartFabq"></canvas><div class="score-display"><span class="label">Fear-Avoid</span><span class="num" id="res-fabq-num">0</span></div></div>
+                </div>
+                <div class="opinion-area"><h3>💡 전문가 종합 의견</h3><p id="opinion-text"></p></div>
+                <div class="norm-container">
+                    <span class="norm-title">평가 결과 해석 기준표</span>
+                    <table class="detail-table">
+                        <thead><tr><th>구분</th><th>점수 범위</th><th>해석</th></tr></thead>
+                        <tbody>
+                            <tr><td rowspan="5" style="background:#f9f9f9; font-weight:800;">요통 장애 (ODI)</td><td>0~20%</td><td>최소 장애 (Minimal)</td></tr>
+                            <tr><td>21~40%</td><td>중등도 장애 (Moderate)</td></tr>
+                            <tr><td>41~60%</td><td>심한 장애 (Severe)</td></tr>
+                            <tr><td>61~80%</td><td>극심한 장애 (Cripple)</td></tr>
+                            <tr><td>81~100%</td><td>치명적 장애 (Exaggerating)</td></tr>
+                            <tr><td style="background:#f9f9f9; font-weight:800;">FABQ - 신체활동</td><td>15점 이상</td><td>높은 두려움 (재활 저해 요인)</td></tr>
+                            <tr><td style="background:#f9f9f9; font-weight:800;">FABQ - 직업활동</td><td>34점 이상</td><td>높은 두려움 (복귀 지연 위험)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="pdf-p2" class="pdf-page">
+                <span class="norm-title">VAS & 요통 장애 지수(ODI) 상세 내역</span>
+                <table class="detail-table"><tbody id="detail-odi-body"></tbody></table>
+            </div>
+            <div id="pdf-p3" class="pdf-page">
+                <span class="norm-title">두려움-회피 신념(FABQ) 상세 내역</span>
+                <table class="detail-table"><tbody id="detail-fabq-body"></tbody></table>
+            </div>
+            <div style="padding: 20px;">
+                <button class="btn btn-pdf" onclick="saveAsPDF()">PDF 보고서 다운로드</button>
+                <button class="btn btn-outline" onclick="location.reload()">새로운 평가 시작</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const odiQuestions = [
+        { id: 'o1', title: '통증 강도', icon: '⚡', opts: [['통증이 전혀 없다.', 0], ['통증이 매우 경미하다.', 1], ['통증이 있으나 견딜만하다.', 2], ['통증이 꽤 심한 편이다.', 3], ['통증이 매우 심하다.', 4], ['통증이 극심하여 견딜 수 없다.', 5]] },
+        { id: 'o2', title: '개인 위생', icon: '🧼', opts: [['통증 없이 평소처럼 할 수 있다.', 0], ['통증은 있으나 평소처럼 할 수 있다.', 1], ['통증으로 인해 평소와 다른 방법으로 한다.', 2], ['통증으로 상당한 도움이 필요하다.', 3], ['매일 하는 모든 일을 할 때 도움이 필요하다.', 4], ['통증으로 옷 입기 등이 불가능하다.', 5]] },
+        { id: 'o3', title: '물건 들기', icon: '📦', opts: [['통증 없이 무거운 물건을 들 수 있다.', 0], ['통증은 있으나 무거운 물건을 들 수 있다.', 1], ['바닥에 있는 무거운 물건은 못 들지만 들 수 있다.', 2], ['아주 가벼운 물건만 들 수 있다.', 3], ['가벼운 물건도 들기 어렵다.', 4], ['어떤 것도 들 수 없다.', 5]] },
+        { id: 'o4', title: '보행 (걷기)', icon: '🚶', opts: [['통증 없이 얼마든지 걸을 수 있다.', 0], ['통증은 있으나 얼마든지 걸을 수 있다.', 1], ['약 1.5km 이상 걷기 힘들다.', 2], ['약 1km 이상 걷기 힘들다.', 3], ['약 0.5km 이상 걷기 힘들다.', 4], ['지팡이 없이는 거의 못 걷는다.', 5]] },
+        { id: 'o5', title: '앉아 있기', icon: '🪑', opts: [['평소처럼 얼마든지 앉을 수 있다.', 0], ['좋아하는 의자에만 얼마든지 앉을 수 있다.', 1], ['1시간 이상 앉기 힘들다.', 2], ['30분 이상 앉기 힘들다.', 3], ['10분 이상 앉기 힘들다.', 4], ['아예 앉아 있을 수 없다.', 5]] },
+        { id: 'o6', title: '서 있기', icon: '🧍', opts: [['평소처럼 얼마든지 서 있을 수 있다.', 0], ['통증은 있으나 얼마든지 서 있을 수 있다.', 1], ['1시간 이상 서 있기 힘들다.', 2], ['30분 이상 서 있기 힘들다.', 3], ['10분 이상 서 있기 힘들다.', 4], ['아예 서 있을 수 없다.', 5]] },
+        { id: 'o7', title: '잠자기', icon: '🛌', opts: [['통증 없이 잘 잔다.', 0], ['통증은 있으나 잘 잔다.', 1], ['수면 시간이 1/4 정도 줄었다.', 2], ['수면 시간이 1/2 정도 줄었다.', 3], ['수면 시간이 3/4 정도 줄었다.', 4], ['아예 잠을 잘 수 없다.', 5]] },
+        { id: 'o8', title: '사회 생활', icon: '👥', opts: [['지장을 주지 않는다.', 0], ['활동량이 다소 줄었다.', 1], ['활동적인 일은 못 한다.', 2], ['외출 빈도가 줄어들었다.', 3], ['생활 범위가 집안으로 국한되었다.', 4], ['전혀 사회생활을 못 한다.', 5]] },
+        { id: 'o9', title: '여행 (이동)', icon: '🚗', opts: [['통증 없이 여행할 수 있다.', 0], ['통증은 있으나 여행할 수 있다.', 1], ['2시간 이상 여행할 수 있다.', 2], ['1시간 이상 여행하기 힘들다.', 3], ['30분 이내 이동만 가능하다.', 4], ['병원 방문 외 이동 불가능하다.', 5]] }
+    ];
+
+    const fabqQuestions = [
+        { id: 'f1', text: '내 통증은 신체 활동에 의해 유발되었다.' },
+        { id: 'f2', text: '신체 활동은 내 통증을 악화시킨다.' },
+        { id: 'f3', text: '신체 활동은 내 몸에 해를 끼칠 수 있다.' },
+        { id: 'f4', text: '통증을 유발할 수 있는 신체 활동을 해서는 안 된다.' },
+        { id: 'f5', text: '내 통증 때문에 신체 활동을 할 수 없다.' },
+        { id: 'f6', text: '내 통증은 내 업무(직업 활동)에 의해 유발되었거나 악화되었다.' },
+        { id: 'f7', text: '내 업무는 내 통증을 악화시킨다.' },
+        { id: 'f8', text: '업무가 통증을 유발함을 관련 기관에 알렸다.' }, 
+        { id: 'f9', text: '내 업무는 나에게 너무 과중하다.' },
+        { id: 'f10', text: '내 업무는 내 몸에 해를 끼칠 수 있다.' },
+        { id: 'f11', text: '내 업무는 내 통증을 악화시킬 수 있다.' },
+        { id: 'f12', text: '업무가 통증을 유발하지 않을지 확신할 수 없다.' },
+        { id: 'f13', text: '나는 평소처럼 업무를 수행할 수 없다.' },
+        { id: 'f14', text: '통증이 나아질 때까지 업무를 수행할 수 없다.' },
+        { id: 'f15', text: '나는 다시는 지금의 업무를 할 수 없을 것 같다.' },
+        { id: 'f16', text: '3개월 이내에 업무 복귀를 할 수 없을 것 같다.' }
+    ];
+
+    window.onload = () => {
+        const numWrap = document.getElementById('vas-numbers');
+        const trackWrap = document.getElementById('vas-track');
+        for(let i=0; i<=10; i++) {
+            numWrap.innerHTML += `<span onclick="setVas(${i})">${i}</span>`;
+            trackWrap.innerHTML += `<div class="scale-point"><input type="radio" name="vas" id="vas${i}" value="${i}" onclick="syncEmoji(${i})"><label for="vas${i}"></label></div>`;
+        }
+        const odiWrap = document.getElementById('odi-container');
+        odiQuestions.forEach((q, idx) => {
+            let html = `<div class="q-card"><div class="q-title">${idx+1}. ${q.title} ${q.icon}</div><div class="options-list">`;
+            q.opts.forEach((opt, oIdx) => { html += `<div class="option-item"><input type="radio" name="${q.id}" id="${q.id}_${oIdx}" value="${opt[1]}"><label for="${q.id}_${oIdx}">${opt[0]}</label></div>`; });
+            html += `</div></div>`;
+            odiWrap.innerHTML += html;
+        });
+        const fabqWrap = document.getElementById('fabq-container');
+        fabqQuestions.forEach((q, idx) => {
+            let html = `<div class="q-card"><div class="q-title" style="font-size:0.9rem">${idx+1}. ${q.text}</div><div class="fabq-options">`;
+            for(let i=0; i<=6; i++) { html += `<div class="fabq-opt"><input type="radio" name="${q.id}" id="${q.id}_${i}" value="${i}"><label for="${q.id}_${i}">${i}</label></div>`; }
+            html += `</div><div class="fabq-labels"><span>전혀 그렇지 않다</span><span>매우 그렇다</span></div></div>`;
+            fabqWrap.innerHTML += html;
+        });
+        document.getElementById('report-date').innerText = "Date: " + new Date().toLocaleDateString();
+    };
+
+    function setVas(val) { document.getElementById(`vas${val}`).checked = true; syncEmoji(val); }
+    function syncEmoji(val) {
+        const emojis = document.querySelectorAll('.emoji-item');
+        emojis.forEach(e => e.classList.remove('selected'));
+        const idx = Math.floor(val / 2);
+        if(emojis[idx]) emojis[idx].classList.add('selected');
+    }
+
+    function navTo(pageIdx) {
+        const currentPage = parseInt(document.querySelector('.page.active').id.replace('page',''));
+        if(pageIdx > currentPage) {
+            if(currentPage === 1 && !document.querySelector('input[name="vas"]:checked')) return alert("통증 점수를 선택해주세요.");
+            if(currentPage === 2 && !validateOdi()) return;
+            if(currentPage === 3 && !validateFabq()) return;
+        }
+        
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(`page${pageIdx}`).classList.add('active');
+        
+        const titles = ["", "STEP 01. 허리 통증 수준 평가", "STEP 02. 요통 장애 지수 평가", "STEP 03. 두려움 회피 신념 평가", "STEP 04. 최종 분석 리포트"];
+        document.getElementById('step-title').innerText = titles[pageIdx];
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`nav${pageIdx}`).classList.add('active');
+        
+        if(pageIdx === 4) { processFinal(); document.getElementById('main-header').style.display = 'none'; }
+        else document.getElementById('main-header').style.display = 'block';
+        window.scrollTo(0,0);
+    }
+
+    function validateOdi() {
+        for(let q of odiQuestions) {
+            if(!document.querySelector(`input[name="${q.id}"]:checked`)) {
+                alert(`[요통장애] "${q.title}" 항목을 선택해주세요.`); return false;
+            }
+        }
+        return true;
+    }
+
+    function validateFabq() {
+        for(let i=0; i<fabqQuestions.length; i++) {
+            if(!document.querySelector(`input[name="f${i+1}"]:checked`)) {
+                alert(`[두려움회피] ${i+1}번 문항에 답변해주세요.`); return false;
+            }
+        }
+        return true;
+    }
+
+    function processFinal() {
+        const vasScore = parseInt(document.querySelector('input[name="vas"]:checked').value);
+        let odiRaw = 0, fabqPA = 0, fabqW = 0;
+
+        let odiHtml = `<tr class="section-row"><td colspan="3">1. 통증 수준 (VAS)</td></tr>`;
+        odiHtml += `<tr><td style="width:20%">VAS</td><td class="text-left">현재 통증 강도</td><td>${vasScore} / 10</td></tr>`;
+        odiHtml += `<tr class="section-row"><td colspan="3">2. 요통 장애 지수 (ODI)</td></tr>`;
+        odiQuestions.forEach(q => {
+            const val = parseInt(document.querySelector(`input[name="${q.id}"]:checked`).value);
+            odiRaw += val;
+            odiHtml += `<tr><td>ODI</td><td class="text-left">${q.title}</td><td>${val}점</td></tr>`;
+        });
+        odiHtml += `<tr class="total-row"><td colspan="2">ODI 합계 점수</td><td>${odiRaw} / 45</td></tr>`;
+        const odiPercent = Math.round((odiRaw / 45) * 100);
+
+        let fabqHtml = `<tr class="section-row"><td colspan="3">3. 두려움-회피 신념 (FABQ)</td></tr>`;
+        fabqHtml += `<tr class="sub-section-row"><td colspan="3">■ FABQ-PA (신체활동)</td></tr>`;
+        [2,3,4,5].forEach(num => {
+            const val = parseInt(document.querySelector(`input[name="f${num}"]:checked`).value);
+            fabqPA += val;
+            fabqHtml += `<tr><td>PA</td><td class="text-left">${num}번 문항</td><td>${val}점</td></tr>`;
+        });
+        fabqHtml += `<tr class="total-row"><td colspan="2">FABQ-PA 합계 점수</td><td>${fabqPA} / 24</td></tr>`;
+        fabqHtml += `<tr class="sub-section-row"><td colspan="3">■ FABQ-W (직업활동)</td></tr>`;
+        [6,7,9,10,11,12,15].forEach(num => {
+            const val = parseInt(document.querySelector(`input[name="f${num}"]:checked`).value);
+            fabqW += val;
+            fabqHtml += `<tr><td>Work</td><td class="text-left">${num}번 문항</td><td>${val}점</td></tr>`;
+        });
+        fabqHtml += `<tr class="total-row"><td colspan="2">FABQ-W 합계 점수</td><td>${fabqW} / 42</td></tr>`;
+        fabqHtml += `<tr class="sub-section-row"><td colspan="3">■ Etc. (기타 참고 문항)</td></tr>`;
+        [1,8,13,14,16].forEach(num => {
+            const val = parseInt(document.querySelector(`input[name="f${num}"]:checked`).value);
+            fabqHtml += `<tr><td>Etc.</td><td class="text-left">${num}번 문항</td><td>${val}점</td></tr>`;
+        });
+
+        document.getElementById('res-vas-num').innerText = vasScore;
+        document.getElementById('res-odi-num').innerText = odiPercent + "%";
+        document.getElementById('res-fabq-num').innerText = (fabqPA + fabqW);
+        document.getElementById('detail-odi-body').innerHTML = odiHtml;
+        document.getElementById('detail-fabq-body').innerHTML = fabqHtml;
+
+        renderDoughnut('chartVas', vasScore, 10, vasScore >= 7 ? '#b71c1c' : '#523021');
+        renderDoughnut('chartOdi', odiPercent, 100, odiPercent >= 41 ? '#b71c1c' : '#523021');
+        renderDoughnut('chartFabq', (fabqPA + fabqW), 66, (fabqPA >= 15 || fabqW >= 34) ? '#b71c1c' : '#523021');
+
+        let op = `현재 요통 장애 지수는 ${odiPercent}%로 `;
+        op += (odiPercent >= 61) ? "극심한 기능적 제한 상태입니다. 전문가의 집중 관리가 시급합니다. " : (odiPercent >= 41) ? "심한 장애 상태입니다. 통증 조절과 가동성 확보가 우선입니다. " : "비교적 양호하거나 중등도 수준입니다. ";
+        op += (fabqPA >= 15 || fabqW >= 34) ? "또한, 통증에 대한 두려움이 높아 회복을 방해하고 있으니 심리적 안정과 가벼운 움직임을 권장합니다." : "통증 인식이 긍정적이므로 적극적인 운동이 효과적일 것입니다.";
+        document.getElementById('opinion-text').innerText = op;
+    }
+
+    function renderDoughnut(id, val, max, color) {
+        const existingChart = Chart.getChart(id);
+        if (existingChart) existingChart.destroy();
+        new Chart(document.getElementById(id), {
+            type: 'doughnut',
+            data: { datasets: [{ data: [val, max - val], backgroundColor: [color, '#e5e5e5'], borderWidth: 0 }] },
+            options: { cutout: '75%', plugins: { tooltip: false }, animation: false, responsive: false, maintainAspectRatio: false }
+        });
+    }
+
+    async function saveAsPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const targets = ['pdf-p1', 'pdf-p2', 'pdf-p3'];
+        for (let i = 0; i < targets.length; i++) {
+            const target = document.getElementById(targets[i]);
+            const canvas = await html2canvas(target, { scale: 2.5, useCORS: true, backgroundColor: "#ffffff", windowWidth: 800 });
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pdf.internal.pageSize.getWidth() - 16;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            if (i > 0) pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 8, 10, imgWidth, imgHeight);
+        }
+        pdf.save(`MediFit_Comprehensive_Report.pdf`);
+    }
+</script>
+</body>
+</html>
